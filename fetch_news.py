@@ -1,24 +1,31 @@
 #!/usr/bin/env python3
 """Récupère les flux RSS et génère news.json pour le site."""
-import json, urllib.request, xml.etree.ElementTree as ET
+import json, sys, urllib.request, xml.etree.ElementTree as ET
 from datetime import datetime, timezone
 
-# Rubrique -> (zone, [flux RSS de secours])
+# Rubrique -> (zone, [flux RSS : le 1er est essayé, puis les suivants en secours])
 FEEDS = {
-    "Politique":    ("fr",  ["https://www.lemonde.fr/rss/politique.xml",
-                            "https://www.francetvinfo.fr/politique/titres.rss"]),
-    "International":("int", ["https://www.lemonde.fr/rss/international.xml",
-                            "https://www.francetvinfo.fr/monde/titres.rss"]),
-    "Économie":     ("int", ["https://www.lemonde.fr/rss/economie.xml",
-                            "https://www.francetvinfo.fr/economie/titres.rss"]),
-    "Société":      ("fr",  ["https://www.lemonde.fr/rss/societe.xml",
-                            "https://www.francetvinfo.fr/societe/titres.rss"]),
-    "Sport":        ("int", ["https://www.lemonde.fr/rss/sport.xml",
-                            "https://www.francetvinfo.fr/sports/titres.rss"]),
-    "Planète":      ("int", ["https://www.lemonde.fr/rss/planete.xml",
-                            "https://www.francetvinfo.fr/environnement/titres.rss"]),
-    "Culture":      ("int", ["https://www.lemonde.fr/rss/culture.xml",
-                            "https://www.francetvinfo.fr/culture/titres.rss"]),
+    "Politique":    ("fr",  ["https://www.lemonde.fr/politique/rss_full.xml",
+                             "https://www.francetvinfo.fr/politique.rss",
+                             "https://www.franceinfo.fr/politique.rss"]),
+    "International":("int", ["https://www.lemonde.fr/international/rss_full.xml",
+                             "https://www.francetvinfo.fr/monde.rss",
+                             "https://www.franceinfo.fr/monde.rss"]),
+    "Économie":     ("int", ["https://www.lemonde.fr/economie/rss_full.xml",
+                             "https://www.francetvinfo.fr/economie.rss",
+                             "https://www.franceinfo.fr/economie.rss"]),
+    "Société":      ("fr",  ["https://www.lemonde.fr/societe/rss_full.xml",
+                             "https://www.francetvinfo.fr/societe.rss",
+                             "https://www.franceinfo.fr/societe.rss"]),
+    "Sport":        ("int", ["https://www.lemonde.fr/sport/rss_full.xml",
+                             "https://www.francetvinfo.fr/sports.rss",
+                             "https://www.franceinfo.fr/sports.rss"]),
+    "Planète":      ("int", ["https://www.lemonde.fr/planete/rss_full.xml",
+                             "https://www.francetvinfo.fr/environnement.rss",
+                             "https://www.franceinfo.fr/environnement.rss"]),
+    "Culture":      ("int", ["https://www.lemonde.fr/culture/rss_full.xml",
+                             "https://www.francetvinfo.fr/culture.rss",
+                             "https://www.franceinfo.fr/culture.rss"]),
 }
 MAX_PAR_RUBRIQUE = 6
 UA = {"User-Agent": "Mozilla/5.0 (compatible; RevueDePresse/1.0)"}
@@ -49,6 +56,12 @@ for rubrique, (zone, urls) in FEEDS.items():
                 break
         except Exception as e:
             print(f"ÉCHEC {rubrique} {url} -> {e}")
+
+# Garde-fou : si rien n'a été récupéré, on ne touche pas à l'ancien news.json
+# et on fait échouer le workflow (pastille rouge) pour que ce soit visible.
+if not articles:
+    print("\nAucun article récupéré : news.json conservé tel quel.")
+    sys.exit(1)
 
 data = {
     "genere_le": datetime.now(timezone.utc).strftime("%d/%m/%Y %H:%M UTC"),
