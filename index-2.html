@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>La Revue — Quotidien &amp; International</title>
+<style>
+  :root{--bleu:#003366;--bleu2:#004d99;--rouge:#c1272d;--papier:#fdfcf8;
+        --encre:#1a1a1a;--gris:#5c5c5c;--ligne:#d9d9d9;--carte:#fff}
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{font-family:Georgia,'Times New Roman',serif;background:var(--papier);color:var(--encre);line-height:1.55}
+  .wrap{max-width:1100px;margin:0 auto;padding:0 16px}
+  header{background:var(--bleu);color:#fff}
+  .bandeau{display:flex;align-items:center;justify-content:space-between;padding:14px 0;gap:12px;flex-wrap:wrap}
+  .logo{font-size:34px;font-weight:bold;letter-spacing:.5px}
+  .logo span{color:#ffd24d}
+  .slogan{font-family:Helvetica,Arial,sans-serif;font-size:12px;opacity:.85;letter-spacing:2px;text-transform:uppercase}
+  .date{font-family:Helvetica,Arial,sans-serif;font-size:13px;text-align:right}
+  .majauto{font-family:Helvetica,Arial,sans-serif;font-size:11px;color:#ffd24d;margin-top:2px}
+  nav{border-top:1px solid rgba(255,255,255,.25)}
+  nav ul{display:flex;gap:4px;list-style:none;flex-wrap:wrap}
+  nav a{display:block;padding:10px 14px;color:#fff;text-decoration:none;font-family:Helvetica,Arial,sans-serif;font-size:14px;border-bottom:3px solid transparent}
+  nav a:hover{background:rgba(255,255,255,.12)}
+  nav a.on{border-bottom-color:#ffd24d;background:rgba(255,255,255,.08)}
+  .controls{display:flex;gap:8px;flex-wrap:wrap;padding:20px 0 8px}
+  .btn{font-family:Helvetica,Arial,sans-serif;font-size:13px;padding:7px 14px;border:1px solid var(--ligne);border-radius:20px;background:#fff;cursor:pointer}
+  .btn:hover{border-color:var(--bleu)}
+  .btn.on{background:var(--bleu);color:#fff;border-color:var(--bleu)}
+  .grille{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;padding:16px 0 32px}
+  .carte{background:var(--carte);border:1px solid var(--ligne);border-radius:10px;padding:16px;display:flex;flex-direction:column;gap:8px;transition:.15s}
+  .carte:hover{box-shadow:0 4px 14px rgba(0,0,0,.08);transform:translateY(-2px)}
+  .carte h3{font-size:17px;line-height:1.3}
+  .carte h3 a{color:var(--encre);text-decoration:none}
+  .carte h3 a:hover{color:var(--bleu2)}
+  .carte p{font-size:14px;color:var(--gris);flex:1}
+  .badge{font-family:Helvetica,Arial,sans-serif;font-size:10px;padding:3px 8px;border-radius:10px;text-transform:uppercase;letter-spacing:.5px;width:fit-content}
+  .badge.fr{background:#e6f0fa;color:var(--bleu2)}
+  .badge.int{background:#fdeaea;color:var(--rouge)}
+  .rub-label{font-family:Helvetica,Arial,sans-serif;font-size:11px;color:var(--bleu2);text-transform:uppercase;letter-spacing:1px}
+  .meta{font-family:Helvetica,Arial,sans-serif;font-size:12px;color:var(--gris)}
+  .alerte{font-family:Helvetica,Arial,sans-serif;font-size:13px;background:#fff8e1;border:1px solid #f0d060;border-radius:8px;padding:10px 14px;margin:16px 0 0}
+  footer{border-top:2px solid var(--bleu);margin-top:24px;padding:24px 0 40px;font-family:Helvetica,Arial,sans-serif;font-size:13px;color:var(--gris);display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap}
+  footer b{color:var(--bleu)}
+  @media (max-width:860px){.grille{grid-template-columns:1fr 1fr}}
+  @media (max-width:560px){.grille{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap">
+    <div class="bandeau">
+      <div>
+        <div class="logo">La <span>Revue</span></div>
+        <div class="slogan">Quotidien &amp; International</div>
+      </div>
+      <div class="date">
+        <div id="dateJour"></div>
+        <div class="majauto" id="majInfo"></div>
+      </div>
+    </div>
+  </div>
+  <nav><div class="wrap"><ul id="menu"></ul></div></nav>
+</header>
+
+<main class="wrap">
+  <div class="controls">
+    <button class="btn on" data-zone="tous">Tout</button>
+    <button class="btn" data-zone="fr">France</button>
+    <button class="btn" data-zone="int">International</button>
+  </div>
+  <div id="alerte"></div>
+  <section class="grille" id="grille"></section>
+</main>
+
+<footer>
+  <div><b>La Revue</b> — actualités agrégées par flux RSS (Le Monde, franceinfo).</div>
+  <div>Sources : lemonde.fr · francetvinfo.fr</div>
+</footer>
+
+<script>
+let ARTICLES = [];
+let catCourante = "tous", zoneCourante = "tous";
+const grille = document.getElementById("grille"),
+      menu   = document.getElementById("menu");
+
+/* ---------- Données : news.json, sinon contenu de secours ---------- */
+const SECOURS = [
+ {cat:"Politique",zone:"fr",t:"Exemple : actualité politique du jour",s:"Ouvrez le site via GitHub Pages ou un serveur local pour charger les vraies dépêches RSS.",m:"",url:"#"},
+ {cat:"International",zone:"int",t:"Exemple : actualité internationale",s:"Le fichier news.json est généré automatiquement par GitHub Actions chaque matin.",m:"",url:"#"}
+];
+
+fetch("news.json").then(r => {
+  if (!r.ok) throw new Error(r.status);
+  return r.json();
+}).then(d => {
+  ARTICLES = d.articles;
+  document.getElementById("majInfo").textContent = "Dernière synchro : " + d.genere_le;
+  construireMenu(); render();
+}).catch(() => {
+  ARTICLES = SECOURS;
+  document.getElementById("alerte").innerHTML =
+    "<b>Mode hors-ligne.</b> news.json introuvable : servez le site via GitHub Pages ou <code>python -m http.server</code> (un double-clic sur le fichier bloque le chargement des données).";
+  construireMenu(); render();
+});
+
+/* ---------- Menu des rubriques dynamique ---------- */
+function construireMenu(){
+  const cats = ["tous", ...new Set(ARTICLES.map(a => a.cat))];
+  menu.innerHTML = "";
+  cats.forEach(c => {
+    const li = document.createElement("li");
+    const a = document.createElement("a");
+    a.href = "#"; a.textContent = c === "tous" ? "À la une" : c;
+    a.dataset.cat = c;
+    if (c === catCourante) a.classList.add("on");
+    a.onclick = e => {
+      e.preventDefault();
+      catCourante = c;
+      menu.querySelectorAll("a").forEach(x => x.classList.remove("on"));
+      a.classList.add("on");
+      render();
+    };
+    li.appendChild(a); menu.appendChild(li);
+  });
+}
+
+/* ---------- Affichage ---------- */
+function render(){
+  grille.innerHTML = "";
+  ARTICLES.filter(a =>
+    (catCourante === "tous" || a.cat === catCourante) &&
+    (zoneCourante === "tous" || a.zone === zoneCourante)
+  ).forEach(a => {
+    const c = document.createElement("article");
+    c.className = "carte";
+    c.innerHTML =
+      '<span class="badge ' + a.zone + '">' + (a.zone === "fr" ? "France" : "International") + '</span>' +
+      '<div class="rub-label">' + a.cat + '</div>' +
+      '<h3><a href="' + (a.url || "#") + '" target="_blank" rel="noopener">' + a.t + '</a></h3>' +
+      '<p>' + a.s + '</p>' +
+      '<div class="meta">' + (a.m || "") + '</div>';
+    grille.appendChild(c);
+  });
+  if (!grille.children.length)
+    grille.innerHTML = '<p style="grid-column:1/-1;color:var(--gris)">Aucun article dans cette sélection.</p>';
+}
+
+document.querySelectorAll(".btn").forEach(b => b.onclick = () => {
+  document.querySelectorAll(".btn").forEach(x => x.classList.remove("on"));
+  b.classList.add("on"); zoneCourante = b.dataset.zone; render();
+});
+
+/* ---------- Date du jour ---------- */
+const j = ["Dimanche","Lundi","Mardi","Mercredi","Jeudi","Vendredi","Samedi"],
+      mo = ["janvier","février","mars","avril","mai","juin","juillet","août","septembre","octobre","novembre","décembre"],
+      n = new Date();
+document.getElementById("dateJour").textContent = j[n.getDay()] + " " + n.getDate() + " " + mo[n.getMonth()] + " " + n.getFullYear();
+</script>
+</body>
+</html>
